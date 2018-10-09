@@ -134,7 +134,7 @@ class Pipeline:
                       evaluate_index.shape)  # the shape is slightly different in different cv, it's OK
 
             self.x_test = np.array(
-                [(np.array(load_img("../../input/test/images/{}.png".format(idx), color_mode="grayscale"))) / 255 for
+                [(np.array(load_img("../../input/test/images/{}.png".format(idx), grayscale=True))) / 255 for
                  idx in
                  tqdm_notebook(self.test_df.index)]).reshape(-1, self.img_size_target, self.img_size_target, 1)
 
