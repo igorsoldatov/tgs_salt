@@ -172,7 +172,7 @@ class Pipeline:
         plot_history(history, 'my_iou_metric', self.get_history_path(stage, fold, epochs, loss, lr))
 
     def training_stage_2(self, epochs, batch_size=32, fold=0, stage=2, lr=0.0005, loss='binary_crossentropy',
-                         custom_objects={'my_iou_metric': my_iou_metric}):
+                         custom_objects={'my_iou_metric': my_iou_metric}, weights=''):
         # training
         self.create_stage_paths(stage, fold)
         model_name = self.get_model_name(stage, fold, epochs, loss, lr)
@@ -187,10 +187,15 @@ class Pipeline:
         x_train = np.append(x_train, [np.fliplr(x) for x in x_train], axis=0)
         y_train = np.append(y_train, [np.fliplr(x) for x in y_train], axis=0)
 
-        model = load_model(self.get_model_name(stage - 1, fold), custom_objects=custom_objects)
+        if weights == '':
+            weights_file = self.get_model_name(stage - 1, fold)
+        else:
+            weights_file = weights
+
+        model = load_model(weights_file, custom_objects=custom_objects)
 
         c = optimizers.adam(lr=lr)
-        model.compile(loss=lovasz_loss, optimizer=c, metrics=[my_iou_metric])
+        model.compile(loss=get_loss_by_name(loss), optimizer=c, metrics=[my_iou_metric])
 
         model_checkpoint = ModelCheckpoint(model_name, monitor='val_my_iou_metric',
                                            mode='max', save_best_only=True, verbose=1)
@@ -204,7 +209,7 @@ class Pipeline:
                             callbacks=[model_checkpoint],
                             verbose=2)
 
-        plot_history(history, 'my_iou_metric', self.get_history_path(stage, fold))
+        plot_history(history, 'my_iou_metric', self.get_history_path(stage, fold, epochs, loss, lr))
 
     def training_stage_3(self, epochs, batch_size=32, fold=0):
         self.training_stage_2(epochs, batch_size, fold, stage=3, lr=0.0001,
