@@ -2,7 +2,7 @@ from pipeline import *
 from losses import *
 
 fold = 4
-epochs = 200
+epochs = 300
 batch_size = 64
 # lr = 0.001
 
