@@ -1,26 +1,11 @@
 from model_unet_resnet import *
 
-import os
-import sys
-import random
-
-import pandas as pd
 import numpy as np
+import cv2
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-white')
 import seaborn as sns
 sns.set_style("white")
-
-#%matplotlib inline
-
-import cv2
-from sklearn.model_selection import StratifiedKFold
-
-from tqdm import tqdm_notebook #, tnrange
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from keras.preprocessing.image import array_to_img, img_to_array, load_img#,save_img
-
-import time
 
 
 #### Reference  from Heng's discussion
