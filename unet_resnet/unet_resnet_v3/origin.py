@@ -87,8 +87,8 @@ train_df = train_df.join(depths_df)
 test_df = depths_df[~depths_df.index.isin(train_df.index)]
 
 warnings.filterwarnings('ignore', category=UserWarning, module='skimage')
-train_df["images"] = [np.array(load_img("../../input/train/images/{}.png".format(idx), grayscale=True)) / 255 for n, idx in tqdm(enumerate(train_df.index), total=len(train_df.index))]
-train_df["masks"] = [np.array(load_img("../../input/train/masks/{}.png".format(idx), grayscale=True)) / 255 for n, idx in tqdm(enumerate(train_df.index), total=len(train_df.index))]
+train_df["images"] = [np.array(load_img("../../input/train/images/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx in tqdm(enumerate(train_df.index), total=len(train_df.index))]
+train_df["masks"] = [np.array(load_img("../../input/train/masks/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx in tqdm(enumerate(train_df.index), total=len(train_df.index))]
 train_df["coverage"] = train_df.masks.map(np.sum) / pow(img_size_ori, 2)
 
 

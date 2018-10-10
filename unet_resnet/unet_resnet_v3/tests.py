@@ -22,6 +22,6 @@ train_df = train_df.join(depths_df)
 test_df = depths_df[~depths_df.index.isin(train_df.index) & ~depths_df.index.isin(valid_df.index)]
 
 x_test = np.array(
-            [upsample(np.array(load_img('../../input/test/images/{}.png'.format(idx), grayscale=True))) / 255 for idx in
+            [upsample(np.array(load_img('../../input/test/images/{}.png'.format(idx), color_mode='grayscale'))) / 255 for idx in
              test_df.index]).reshape(-1, 128, 128, 1)
 a = 1

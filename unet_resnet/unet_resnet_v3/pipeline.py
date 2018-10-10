@@ -49,16 +49,16 @@ class Pipeline:
             print(len(self.train_df))
 
             self.train_df["images"] = [
-                np.array(load_img("../../input/train/images/{}.png".format(idx), grayscale=True)) / 255 for n, idx
+                np.array(load_img("../../input/train/images/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx
                 in tqdm(enumerate(self.train_df.index), total=len(self.train_df.index))]
             self.train_df["masks"] = [
-                np.array(load_img("../../input/train/masks/{}.png".format(idx), grayscale=True)) / 255 for n, idx
+                np.array(load_img("../../input/train/masks/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx
                 in tqdm(enumerate(self.train_df.index), total=len(self.train_df.index))]
             self.valid_df["images"] = [
-                np.array(load_img("../../input/train/images/{}.png".format(idx), grayscale=True)) / 255 for n, idx
+                np.array(load_img("../../input/train/images/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx
                 in tqdm(enumerate(self.valid_df.index), total=len(self.valid_df.index))]
             self.valid_df["masks"] = [
-                np.array(load_img("../../input/train/masks/{}.png".format(idx), grayscale=True)) / 255 for n, idx
+                np.array(load_img("../../input/train/masks/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx
                 in tqdm(enumerate(self.valid_df.index), total=len(self.valid_df.index))]
 
             self.train_df["coverage"] = self.train_df.masks.map(np.sum) / pow(self.img_size_target, 2)
@@ -69,7 +69,7 @@ class Pipeline:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 self.x_test = np.array(
-                    [self.upsample(np.array(load_img('../../input/test/images/{}.png'.format(idx), grayscale=True))) / 255 for
+                    [self.upsample(np.array(load_img('../../input/test/images/{}.png'.format(idx), color_mode='grayscale'))) / 255 for
                      n, idx in tqdm(enumerate(self.test_df.index), total=len(self.test_df.index))]).reshape(-1, self.img_size_target, self.img_size_target, 1)
 
         else:
@@ -81,10 +81,10 @@ class Pipeline:
             print(len(self.train_df))
 
             self.train_df["images"] = [
-                np.array(load_img("../../input/train/images/{}.png".format(idx), grayscale=True)) / 255 for n, idx
+                np.array(load_img("../../input/train/images/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx
                 in tqdm(enumerate(self.train_df.index), total=len(self.train_df.index))]
             self.train_df["masks"] = [
-                np.array(load_img("../../input/train/masks/{}.png".format(idx), grayscale=True)) / 255 for n, idx
+                np.array(load_img("../../input/train/masks/{}.png".format(idx), color_mode='grayscale')) / 255 for n, idx
                 in tqdm(enumerate(self.train_df.index), total=len(self.train_df.index))]
 
             self.train_df["coverage"] = self.train_df.masks.map(np.sum) / pow(self.img_size_target, 2)
@@ -100,7 +100,7 @@ class Pipeline:
                       evaluate_index.shape)  # the shape is slightly different in different cv, it's OK
 
             self.x_test = np.array(
-                [(np.array(load_img("../../input/test/images/{}.png".format(idx), grayscale=True))) / 255 for
+                [(np.array(load_img("../../input/test/images/{}.png".format(idx), color_mode='grayscale'))) / 255 for
                  idx in
                  self.test_df.index]).reshape(-1, self.img_size_target, self.img_size_target, 1)
 
