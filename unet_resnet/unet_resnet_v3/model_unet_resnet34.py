@@ -18,6 +18,8 @@ from keras.layers import Activation
 from keras.layers import GlobalAveragePooling2D
 from keras.layers import ZeroPadding2D
 from keras.layers import Dense
+from keras.layers import Lambda
+from keras.layers import Multiply
 from keras.models import Model
 from keras.engine import get_source_inputs
 
@@ -277,6 +279,33 @@ def usual_identity_block(filters, stage, block):
         return x
 
     return layer
+
+
+def cse_block(prevlayer, prefix):
+    mean = Lambda(lambda xin: K.mean(xin, axis=[1, 2]))(prevlayer)
+    lin1 = Dense(K.int_shape(prevlayer)[3]//2, name=prefix + 'cse_lin1', activation='relu')(mean)
+    lin2 = Dense(K.int_shape(prevlayer)[3], name=prefix + 'cse_lin2', activation='sigmoid')(lin1)
+    x = Multiply()([prevlayer, lin2])
+    return x
+
+
+def sse_block(prevlayer, prefix):
+    conv = Conv2D(1, (1, 1), padding="same", kernel_initializer="he_normal", activation='sigmoid', strides=(1, 1),
+                  name=prefix + "_conv")(prevlayer)
+    conv = Multiply(name=prefix + "_mul")([prevlayer, conv])
+    return conv
+
+
+def csse_block(x, prefix):
+    '''
+    Implementation of Concurrent Spatial and Channel ‘Squeeze & Excitation’ in Fully Convolutional Networks
+    https://arxiv.org/abs/1803.02579
+    '''
+    cse = cse_block(x, prefix)
+    sse = sse_block(x, prefix)
+    x = Add(name=prefix + "_csse_mul")([cse, sse])
+
+    return x
 
 
 def build_unet(backbone, classes, last_block_filters, skip_layers,
