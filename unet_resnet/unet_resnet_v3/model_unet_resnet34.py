@@ -18,13 +18,19 @@ from keras.layers import Activation
 from keras.layers import GlobalAveragePooling2D
 from keras.layers import ZeroPadding2D
 from keras.layers import Dense
-from keras.layers import Lambda
-from keras.layers import Multiply
+from keras.layers import Lambda, Multiply
 from keras.models import Model
 from keras.engine import get_source_inputs
 
 import keras
 from distutils.version import StrictVersion
+
+if StrictVersion(keras.__version__) < StrictVersion('2.2.0'):
+    from keras.applications.imagenet_utils import _obtain_input_shape
+else:
+    from keras_applications.imagenet_utils import _obtain_input_shape
+
+
 
 
 def get_layer_number(model, layer_name):
@@ -42,6 +48,7 @@ def get_layer_number(model, layer_name):
         if l.name == layer_name:
             return i
     raise ValueError('No layer with name {} in  model {}.'.format(layer_name, model.name))
+
 
 # https://github.com/qubvel/segmentation_models/blob/master/segmentation_models/unet/models.py
 
@@ -103,6 +110,7 @@ def Transpose2D_block(filters, stage, kernel_size=(3,3), upsample_rate=(2,2),
         return x
     return layer
 
+
 # default parameters for convolution and batchnorm layers of ResNet models
 # parameters are obtained from MXNet converted model
 
@@ -114,7 +122,6 @@ def get_conv_params(**params):
     }
     default_conv_params.update(params)
     return default_conv_params
-
 
 def get_bn_params(**params):
     default_bn_params = {
@@ -283,8 +290,8 @@ def usual_identity_block(filters, stage, block):
 
 def cse_block(prevlayer, prefix):
     mean = Lambda(lambda xin: K.mean(xin, axis=[1, 2]))(prevlayer)
-    lin1 = Dense(K.int_shape(prevlayer)[3]//2, name=prefix + 'cse_lin1', activation='relu')(mean)
-    lin2 = Dense(K.int_shape(prevlayer)[3], name=prefix + 'cse_lin2', activation='sigmoid')(lin1)
+    lin1 = Dense(K.int_shape(prevlayer)[3]//2, name=prefix + '_cse_lin1', activation='relu')(mean)
+    lin2 = Dense(K.int_shape(prevlayer)[3], name=prefix + '_cse_lin2', activation='sigmoid')(lin1)
     x = Multiply()([prevlayer, lin2])
     return x
 
@@ -311,7 +318,7 @@ def csse_block(x, prefix):
 def build_unet(backbone, classes, last_block_filters, skip_layers,
                n_upsample_blocks=5, upsample_rates=(2,2,2,2,2),
                block_type='upsampling', activation='sigmoid',
-               **kwargs):
+               csse_block_use=False, **kwargs):
 
     input = backbone.input
     x = backbone.output
@@ -328,7 +335,7 @@ def build_unet(backbone, classes, last_block_filters, skip_layers,
 
         # check if there is a skip connection
         if i < len(skip_layers):
-#             print(backbone.layers[skip_layers[i]])
+            print(backbone.layers[skip_layers[i]].name)
 #             print(backbone.layers[skip_layers[i]].output)
             skip = backbone.layers[skip_layers[i]].output
         else:
@@ -338,22 +345,18 @@ def build_unet(backbone, classes, last_block_filters, skip_layers,
         filters = last_block_filters * 2**(n_upsample_blocks-(i+1))
 
         x = up_block(filters, i, upsample_rate=up_size, skip=skip, **kwargs)(x)
+        if csse_block_use:
+            x = csse_block(x, f'unit{i+1}')
 
     if classes < 2:
         activation = 'sigmoid'
 
-    x = Conv2D(classes, (3, 3), padding='same', name='final_conv')(x)
+    x = Conv2D(classes, (3,3), padding='same', name='final_conv')(x)
     x = Activation(activation, name=activation)(x)
 
     model = Model(input, x)
 
     return model
-
-
-if StrictVersion(keras.__version__) < StrictVersion('2.2.0'):
-    from keras.applications.imagenet_utils import _obtain_input_shape
-else:
-    from keras_applications.imagenet_utils import _obtain_input_shape
 
 
 def build_resnet(
@@ -362,7 +365,8 @@ def build_resnet(
         input_tensor=None,
         input_shape=None,
         classes=1000,
-        block_type='usual'):
+        block_type='usual',
+        csse_block_use=False):
     # Determine proper input shape
     input_shape = _obtain_input_shape(input_shape,
                                       default_size=224,
@@ -401,6 +405,7 @@ def build_resnet(
     x = MaxPooling2D((3, 3), strides=(2, 2), padding='valid', name='pooling0')(x)
 
     # resnet body
+    count_csse = 1
     for stage, rep in enumerate(repetitions):
         for block in range(rep):
 
@@ -415,6 +420,10 @@ def build_resnet(
 
             else:
                 x = identity_block(filters, stage, block)(x)
+
+            if csse_block_use:
+                x = csse_block(x, f'stage{stage + 1}_unit{block + 1}')
+                count_csse = count_csse + 1
 
     x = BatchNormalization(name='bn1', **bn_params)(x)
     x = Activation('relu', name='relu1')(x)
@@ -435,6 +444,7 @@ def build_resnet(
     model = Model(inputs, x)
 
     return model
+
 
 weights_collection = [
     # ResNet34
@@ -460,17 +470,35 @@ weights_collection = [
 ]
 
 def ResNet34(input_shape, input_tensor=None, weights=None, classes=1000, include_top=True):
-    model = build_resnet(input_tensor=input_tensor,
+    model_origin = build_resnet(input_tensor=input_tensor,
                          input_shape=input_shape,
                          repetitions=(3, 4, 6, 3),
                          classes=classes,
                          include_top=include_top,
                          block_type='basic')
-    model.name = 'resnet34'
+    model_origin.name = 'resnet34'
 
     if weights:
-        load_model_weights(weights_collection, model, weights, classes, include_top)
+        load_model_weights(weights_collection, model_origin, weights, classes, include_top)
+
+    model = build_resnet(input_tensor=input_tensor,
+                         input_shape=input_shape,
+                         repetitions=(3, 4, 6, 3),
+                         classes=classes,
+                         include_top=include_top,
+                         block_type='basic',
+                         csse_block_use=True)
+    model_origin.name = 'resnet34'
+
+    for layer in model_origin.layers:
+        weighted_layer = model_origin.get_layer(layer.name)
+        layer.set_weights(weighted_layer.get_weights())
+
+    # print('ResNet34 with csse block')
+    # model.summary()
+
     return model
+
 
 from keras.utils import get_file
 
@@ -504,13 +532,17 @@ def load_model_weights(weights_collection, model, dataset, classes, include_top)
                          'model = {}, dataset = {}, '.format(model.name, dataset) +
                          'classes = {}, include_top = {}.'.format(classes, include_top))
 
+
 def UResNet34(input_shape=(None, None, 3), classes=1, decoder_filters=16, decoder_block_type='transpose',
                        encoder_weights=None, input_tensor=None, activation='sigmoid', **kwargs):
     backbone = ResNet34(input_shape=input_shape, weights='imagenet', classes=1000,include_top=False)
-    skip_connections = list([106, 74, 37, 5])  # for resnet 34
+    # skip_connections = list([106,74,37,5])  # for resnet 34
+    skip_connections = list([176,123,58,5])  # for resnet 34 csse
     model = build_unet(backbone, classes, decoder_filters,
                        skip_connections, block_type=decoder_block_type,
-                       activation=activation, **kwargs)
+                       activation=activation, csse_block_use=True, **kwargs)
     model.name = 'u-resnet34'
-
+    print('')
+    model.summary()
     return model
+

@@ -125,6 +125,8 @@ class Pipeline:
 
         model = UResNet34(input_shape=(self.img_size_target, self.img_size_target, 3))
 
+        model.summary()
+
         c = optimizers.adam(lr=lr)
         model.compile(loss=get_loss_by_name(loss), optimizer=c, metrics=[my_iou_metric])
 

@@ -393,7 +393,7 @@ def build_unet(backbone, classes, last_block_filters, skip_layers,
 
         # check if there is a skip connection
         if i < len(skip_layers):
-#             print(backbone.layers[skip_layers[i]])
+            print(backbone.layers[skip_layers[i]].name)
 #             print(backbone.layers[skip_layers[i]].output)
             skip = backbone.layers[skip_layers[i]].output
         else:
@@ -411,7 +411,8 @@ def build_unet(backbone, classes, last_block_filters, skip_layers,
     x = Activation(activation, name=activation)(x)
 
     model = Model(input, x)
-
+    print("Unet with resnet34 backbone")
+    model.summary()
     return model
 
 
